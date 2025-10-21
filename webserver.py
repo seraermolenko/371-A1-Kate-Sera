@@ -1,4 +1,5 @@
 import socket
+import os 
 
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 PORT = 8080  
@@ -40,8 +41,9 @@ def handle_client(client):
 
 
         if path == "/":
-            path = "/index.html"
-        file_path = os.path.join(WEB_ROOT, path.lstrip("/"))
+            path = "/test.html"
+        file_path = "/test.html"
+        #os.path.join(WEB_ROOT, path.lstrip("/"))
 
         if not os.path.exists(file_path):
             response = build_response(404, b"Not Found")
