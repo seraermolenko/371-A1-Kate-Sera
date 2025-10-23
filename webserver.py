@@ -20,7 +20,7 @@ from email.utils import formatdate, parsedate_to_datetime
 # 404 
 # curl -i http://127.0.0.1:8080/doesnotexist.html
 # 505 
-# curl -1 "http://127.0.0.1:8080/test.html?v=2"
+# curl -i "http://127.0.0.1:8080/test.html?v=2"
 
 HOST = "127.0.0.1" 
 PORT = 8080  
@@ -113,6 +113,32 @@ def handle_client(connection):
 
 
     connection.close()
+
+# def proxy_request(client_conn, method, url, version):
+#     # Parse host and path
+#     url_parts = url.replace("http://", "").split("/", 1)
+#     host = url_parts[0]
+#     path = "/" + url_parts[1] if len(url_parts) > 1 else "/"
+
+#     # Create socket to destination server
+#     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as proxy_sock:
+#         proxy_sock.connect((host, 80))
+#         # Forward the original GET request
+#         forward_request = f"{method} {path} {version}\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+#         proxy_sock.sendall(forward_request.encode())
+
+#         # Receive the response from the real server
+#         response = b""
+#         while True:
+#             chunk = proxy_sock.recv(4096)
+#             if not chunk:
+#                 break
+#             response += chunk
+
+#     # Send the response back to the client
+#     client_conn.sendall(response)
+#     client_conn.close()
+
 
 def run():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s: # server socket
