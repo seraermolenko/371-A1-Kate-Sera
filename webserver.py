@@ -14,7 +14,7 @@ from email.utils import formatdate, parsedate_to_datetime
 
 # 403
 # u gotta create a secret file and change its permisions cuz git wont let me push w it (chmod 000 teehee.txt)
-# I just added a dummy teehee file with 644 so that I could push
+# I just added a dummy teehee file with 644 so that I could push (chmod 644 teehee.txt)
 # curl -i http://127.0.0.1:8080/teehee.txt
 
 # 404 
