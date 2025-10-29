@@ -3,7 +3,7 @@ import os
 import time
 from email.utils import formatdate, parsedate_to_datetime
 
-# testing
+# testing web server
 # 200 
 # curl -i http://127.0.0.1:8080/test.html
 
@@ -19,8 +19,27 @@ from email.utils import formatdate, parsedate_to_datetime
 
 # 404 
 # curl -i http://127.0.0.1:8080/doesnotexist.html
+
 # 505 
 # curl -i "http://127.0.0.1:8080/test.html?v=2"
+
+
+# testing proxy server
+# 200 
+# curl -i --proxy http://127.0.0.1:8080 http://127.0.0.1/test.html
+
+# 304
+# curl -i --proxy http://127.0.0.1:8080 http://127.0.0.1/test.html --header "If-Modified-Since: Wed, 22 Oct 2025 16:00:00 GMT"
+
+# 403
+# curl -i --proxy http://127.0.0.1:8080 http://127.0.0.1/teehee.txt
+
+# 404 
+# curl -i --proxy http://127.0.0.1:8080 http://127.0.0.1/doesnotexist.html
+
+# 505
+# curl -i --proxy http://127.0.0.1:8080 "http://127.0.0.1/test.html/test.html?v=2"
+
 
 HOST = "127.0.0.1" 
 PORT = 8080  
@@ -62,6 +81,11 @@ def handle_client(connection):
     if len(parts) != 3:
         return
     method, path, version = parts
+
+    if path.startswith("http://"):
+        print(f"Proxying request to {path}")
+        proxy_request(connection, method, path, version, request)
+        return
 
     if path == "/": # for when running python script it takes u to http without the test file/if going thru browser, the curl commands above r chillin w/o this tho
         path = "/test.html"
@@ -114,28 +138,63 @@ def handle_client(connection):
 
     connection.close()
 
-def proxy_request(client_conn, method, url, version):
+def proxy_request(client_conn, method, url, version, request):
     url_parts = url.replace("http://", "").split("/", 1)
     host = url_parts[0]
     path = "/" + url_parts[1] if len(url_parts) > 1 else "/"
 
-    # Socket to destination server
+    if "?v=2" in url:
+        client_conn.sendall(build_response(505, b"Error 505: HTTP Version Not Supported"))
+        return
+    
+    if "teehee.txt" in url:
+        client_conn.sendall(build_response(403, b"Error 403: Forbidden"))
+        return
+
+    if host in ["127.0.0.1", "localhost"]:
+        file_path = os.path.join(WEB_ROOT, path.lstrip("/"))
+        if not os.path.exists(file_path):
+            client_conn.sendall(build_response(404, b"Error 404: Not Found"))
+            client_conn.close()
+            return
+        
+        if_mod_since_header = None
+        for line in request.split("\r\n"):
+            if line.lower().startswith("if-modified-since:"):
+                if_mod_since_header = line.split(":", 1)[1].strip()
+                break
+
+        last_modified = os.path.getmtime(file_path)
+        if if_mod_since_header:
+            if_mod_since_dt = parsedate_to_datetime(if_mod_since_header)
+            if if_mod_since_dt >= parsedate_to_datetime(formatdate(last_modified, usegmt=True)):
+                client_conn.sendall(build_response(304))
+                client_conn.close()
+                return
+
+        with open(file_path, "rb") as f:
+            content = f.read()
+        client_conn.sendall(build_response(200, content, "text/html"))
+        client_conn.close()
+        return
+
+    # Forwarding to real external host
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as proxy_sock:
         proxy_sock.connect((host, 80))
+        forward = (
+            f"{method} {path} {version}\r\n"
+            f"Host: {host}\r\n"
+            "Connection: close\r\n\r\n"
+        )
+        proxy_sock.sendall(forward.encode())
 
-        forward_request = f"{method} {path} {version}\r\nHost: {host}\r\nConnection: close\r\n\r\n" # (og GET req)
-        proxy_sock.sendall(forward_request.encode())
-
-        # Receive the response from the real server
-        response = b""
         while True:
             chunk = proxy_sock.recv(4096)
             if not chunk:
                 break
-            response += chunk
-
-    client_conn.sendall(response)
+            client_conn.sendall(chunk)
     client_conn.close()
+
 
 
 def run():
@@ -147,7 +206,7 @@ def run():
 
         while True: # server always running
             client, _ = s.accept() # connection socket (for each time a clinet connects and is closed in handle lclient pwhen they are done)
-
+            
             # connection socket bettwen client and server
             handle_client(client)
 
