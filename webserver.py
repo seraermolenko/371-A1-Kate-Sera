@@ -2,6 +2,7 @@ import socket
 import os 
 import time
 from email.utils import formatdate, parsedate_to_datetime
+import threading
 
 # testing web server
 # 200 
@@ -208,7 +209,10 @@ def run():
             client, _ = s.accept() # connection socket (for each time a clinet connects and is closed in handle lclient pwhen they are done)
             
             # connection socket bettwen client and server
-            handle_client(client)
+            t = threading.Thread(target=handle_client, args=(client,), daemon=True) #daemon=True allows thread to exit cleanly on ctrl^C
+            t.start()
+
+            # handle_client(client)
 
 if __name__ == "__main__":
     run()
