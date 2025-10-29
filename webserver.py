@@ -114,30 +114,28 @@ def handle_client(connection):
 
     connection.close()
 
-# def proxy_request(client_conn, method, url, version):
-#     # Parse host and path
-#     url_parts = url.replace("http://", "").split("/", 1)
-#     host = url_parts[0]
-#     path = "/" + url_parts[1] if len(url_parts) > 1 else "/"
+def proxy_request(client_conn, method, url, version):
+    url_parts = url.replace("http://", "").split("/", 1)
+    host = url_parts[0]
+    path = "/" + url_parts[1] if len(url_parts) > 1 else "/"
 
-#     # Create socket to destination server
-#     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as proxy_sock:
-#         proxy_sock.connect((host, 80))
-#         # Forward the original GET request
-#         forward_request = f"{method} {path} {version}\r\nHost: {host}\r\nConnection: close\r\n\r\n"
-#         proxy_sock.sendall(forward_request.encode())
+    # Socket to destination server
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as proxy_sock:
+        proxy_sock.connect((host, 80))
 
-#         # Receive the response from the real server
-#         response = b""
-#         while True:
-#             chunk = proxy_sock.recv(4096)
-#             if not chunk:
-#                 break
-#             response += chunk
+        forward_request = f"{method} {path} {version}\r\nHost: {host}\r\nConnection: close\r\n\r\n" # (og GET req)
+        proxy_sock.sendall(forward_request.encode())
 
-#     # Send the response back to the client
-#     client_conn.sendall(response)
-#     client_conn.close()
+        # Receive the response from the real server
+        response = b""
+        while True:
+            chunk = proxy_sock.recv(4096)
+            if not chunk:
+                break
+            response += chunk
+
+    client_conn.sendall(response)
+    client_conn.close()
 
 
 def run():
